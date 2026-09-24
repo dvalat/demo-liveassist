@@ -18,6 +18,7 @@ import {
   setEquipmentStatusAction,
   acknowledgeAlarmAction,
   logInterventionAction,
+  deleteInterventionLogAction,
   setEnergyModeAction
 } from './services/dalkiaFacilityStore.ts';
 import {
@@ -130,6 +131,16 @@ export const App: React.FC = () => {
         summary,
         category,
         message: 'Intervention enregistrée dans la GMAO'
+      };
+    }
+
+    if (name === 'deleteIntervention') {
+      const logId = String(args.logId || args.ticket_id || '');
+      setFacilityState((prev) => deleteInterventionLogAction(prev, logId));
+      return {
+        status: 'success',
+        logId,
+        message: `Intervention ${logId} supprimée de la GMAO`
       };
     }
 
@@ -286,6 +297,14 @@ export const App: React.FC = () => {
   }, []);
 
   /**
+   * Deletes an individual GMAO intervention log.
+   * @param logId ID of the log to delete
+   */
+  const handleDeleteLog = useCallback((logId: string): void => {
+    setFacilityState((prev) => deleteInterventionLogAction(prev, logId));
+  }, []);
+
+  /**
    * Saves API key and simulation preference.
    * @param key Gemini API Key
    * @param isSim Simulation mode flag
@@ -368,6 +387,7 @@ export const App: React.FC = () => {
               alarms={facilityState.alarms}
               logs={facilityState.interventionLogs}
               onAcknowledgeAlarm={handleAcknowledgeAlarm}
+              onDeleteLog={handleDeleteLog}
             />
           </div>
         </div>

@@ -1597,6 +1597,48 @@ body {
   border: 1px solid #CBD5E1;
 }
 
+.ticket-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-delete-ticket {
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  color: #94A3B8;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  line-height: 1;
+}
+
+.btn-delete-ticket .material-symbols-outlined {
+  font-size: 16px;
+}
+
+.btn-delete-ticket:hover {
+  background: #FEE2E2;
+  border-color: #FCA5A5;
+  color: #DC2626;
+  transform: scale(1.08);
+}
+
+.btn-delete-ticket:active {
+  transform: scale(0.92);
+}
+
+.gmao-ticket-card.deleting {
+  opacity: 0;
+  transform: translateX(40px) scale(0.95);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+
 .ticket-title {
   font-size: 0.98rem;
   font-weight: 700;

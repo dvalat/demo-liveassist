@@ -214,6 +214,11 @@ function handleServerMessage(msg) {
       handleGmaoTicketCreated(msg.ticket);
       break;
 
+    case 'gmao_deleted':
+      console.log('GMAO intervention deleted event received:', msg.ticket_id);
+      handleGmaoTicketDeleted(msg.ticket_id);
+      break;
+
     case 'interrupted':
       handleInterruption();
       break;
@@ -996,7 +1001,12 @@ function renderFilteredGmaoTickets() {
           <span class="ticket-id">${escapeHtml(ticket.ticket_id || ('GMAO-' + ticket.numero_intervention))}</span>
           <span class="equipment-badge ${equipClass}">${escapeHtml(ticket.equipment || 'Équipement')}</span>
         </div>
-        <span class="ticket-severity-badge ${severityClass}">${escapeHtml(ticket.severity || 'Normal')}</span>
+        <div class="ticket-actions-group">
+          <span class="ticket-severity-badge ${severityClass}">${escapeHtml(ticket.severity || 'Normal')}</span>
+          <button class="btn-delete-ticket" data-ticket-id="${escapeHtml(ticket.ticket_id || ('GMAO-' + ticket.numero_intervention))}" title="Supprimer ce bon d'intervention">
+            <span class="material-symbols-outlined">delete</span>
+          </button>
+        </div>
       </div>
 
       <h4 class="ticket-title">${escapeHtml(ticket.title || 'Intervention')}</h4>
@@ -1089,6 +1099,58 @@ function handleGmaoTicketCreated(ticket) {
       gmaoBadgeCount.style.transform = 'scale(1)';
     }, 600);
   }
+}
+
+function handleGmaoTicketDeleted(ticketId) {
+  if (!ticketId) return;
+  const cleanId = String(ticketId).trim();
+
+  gmaoTicketsList = gmaoTicketsList.filter(t => {
+    const tId = String(t.ticket_id || ('GMAO-' + t.numero_intervention)).trim();
+    const tNum = String(t.numero_intervention || '').trim();
+    if (tId === cleanId) return false;
+    if (tNum && tNum === cleanId) return false;
+    if (tNum && cleanId.endsWith('-' + tNum)) return false;
+    return true;
+  });
+
+  updateGmaoKpis();
+  renderFilteredGmaoTickets();
+}
+
+// Single ticket deletion via trash button
+if (gmaoTicketsGrid) {
+  gmaoTicketsGrid.addEventListener('click', async (e) => {
+    const deleteBtn = e.target.closest('.btn-delete-ticket');
+    if (!deleteBtn) return;
+
+    const ticketId = deleteBtn.getAttribute('data-ticket-id');
+    if (!ticketId) return;
+
+    const confirmMsg = `Confirmez-vous la suppression du bon d'intervention ${ticketId} ?\nCette opération sera également répercutée dans BigQuery.`;
+    if (!window.confirm(confirmMsg)) return;
+
+    const card = deleteBtn.closest('.gmao-ticket-card');
+    if (card) {
+      card.classList.add('deleting');
+    }
+
+    try {
+      const res = await fetch(`/api/gmao/interventions/${encodeURIComponent(ticketId)}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+      setTimeout(() => {
+        handleGmaoTicketDeleted(ticketId);
+      }, 250);
+    } catch (err) {
+      console.error('Erreur lors de la suppression du ticket:', err);
+      if (card) card.classList.remove('deleting');
+      alert(`Impossible de supprimer le bon d'intervention : ${err.message}`);
+    }
+  });
 }
 
 // Modal Form Handlers

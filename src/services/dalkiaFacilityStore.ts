@@ -393,3 +393,22 @@ export const setEnergyModeAction = (
     lastVoiceAction: actionText
   };
 };
+
+/**
+ * Pure function to delete an individual intervention log by ID.
+ * @param state Current facility state
+ * @param logId ID of the intervention log to delete
+ * @returns Updated facility state
+ */
+export const deleteInterventionLogAction = (
+  state: IDalkiaFacilityState,
+  logId: string
+): IDalkiaFacilityState => {
+  const updatedLogs = state.interventionLogs.filter((log) => log.id !== logId);
+  return {
+    ...state,
+    interventionLogs: updatedLogs,
+    lastVoiceAction: `Intervention ${logId} supprimée de la GMAO`
+  };
+};
+

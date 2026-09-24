@@ -9,7 +9,8 @@ import {
   Clock,
   ShieldAlert,
   UserCheck,
-  FileText
+  FileText,
+  Trash2
 } from 'lucide-react';
 import { IAlarm, IInterventionLog } from '../types/dalkia.ts';
 
@@ -20,6 +21,7 @@ export interface IAlarmsAndLogsPanelProps {
   readonly alarms: readonly IAlarm[];
   readonly logs: readonly IInterventionLog[];
   readonly onAcknowledgeAlarm: (alarmId: string) => void;
+  readonly onDeleteLog?: (logId: string) => void;
 }
 
 /**
@@ -30,7 +32,8 @@ export interface IAlarmsAndLogsPanelProps {
 export const AlarmsAndLogsPanel: React.FC<IAlarmsAndLogsPanelProps> = ({
   alarms,
   logs,
-  onAcknowledgeAlarm
+  onAcknowledgeAlarm,
+  onDeleteLog
 }) => {
   const [activeTab, setActiveTab] = useState<'alarms' | 'gmao'>('alarms');
 
@@ -183,7 +186,18 @@ export const AlarmsAndLogsPanel: React.FC<IAlarmsAndLogsPanelProps> = ({
                   <FileText className="w-3 h-3 text-[#0072CE]" />
                   <span>Auteur : {log.author}</span>
                 </span>
-                <span className="text-emerald-400 font-semibold">Validé GMAO</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-emerald-400 font-semibold">Validé GMAO</span>
+                  {onDeleteLog !== undefined && (
+                    <button
+                      onClick={() => onDeleteLog(log.id)}
+                      className="p-1 rounded text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                      title="Supprimer ce bon d'intervention"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           ))}

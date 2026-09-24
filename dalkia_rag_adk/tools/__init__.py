@@ -13,6 +13,7 @@ from .scada_tools import (
     set_temperature_setpoint,
     execute_equipment_override,
     log_gmao_intervention,
+    delete_gmao_intervention,
     get_active_alarms,
 )
 
@@ -25,5 +26,6 @@ __all__ = [
     "set_temperature_setpoint",
     "execute_equipment_override",
     "log_gmao_intervention",
+    "delete_gmao_intervention",
     "get_active_alarms",
 ]

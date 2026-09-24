@@ -22,6 +22,7 @@ from .tools.scada_tools import (
     set_temperature_setpoint,
     execute_equipment_override,
     log_gmao_intervention,
+    delete_gmao_intervention,
 )
 
 
@@ -104,6 +105,17 @@ class DalkiaLiveRagClient:
                     "required": ["title", "description", "equipment_id"],
                 },
             },
+            {
+                "name": "delete_gmao_intervention",
+                "description": "Supprime unitairement un bon d'intervention dans la GMAO Dalkia.",
+                "parameters": {
+                    "type": "OBJECT",
+                    "properties": {
+                        "ticket_id": {"type": "STRING", "description": "Identifiant du ticket ou numéro."},
+                    },
+                    "required": ["ticket_id"],
+                },
+            },
         ]
 
         return {
@@ -146,6 +158,8 @@ class DalkiaLiveRagClient:
                 args.get("equipment_id", "B1"),
                 args.get("severity", "normal"),
             )
+        if tool_name == "delete_gmao_intervention":
+            return delete_gmao_intervention(args.get("ticket_id", ""))
         return {"status": "error", "message": f"Outil inconnu : {tool_name}"}
 
     async def simulate_live_rag_turn(self, user_query: str) -> Dict[str, Any]:

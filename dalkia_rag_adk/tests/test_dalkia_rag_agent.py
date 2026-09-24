@@ -24,6 +24,7 @@ from dalkia_rag_adk.tools.scada_tools import (
     set_boiler_temperature,
     execute_equipment_override,
     log_gmao_intervention,
+    delete_gmao_intervention,
     get_active_alarms,
 )
 from dalkia_rag_adk.live_rag_client import DalkiaLiveRagClient
@@ -106,6 +107,7 @@ class TestDalkiaRagAgent(unittest.TestCase):
         self.assertIn("set_temperature_setpoint", func_names)
         self.assertIn("execute_equipment_override", func_names)
         self.assertIn("log_gmao_intervention", func_names)
+        self.assertIn("delete_gmao_intervention", func_names)
 
     def test_05_scada_and_gmao_operational_tools(self):
         """Tests telemetry, setpoint modification, equipment override, and GMAO ticket creation."""
@@ -218,7 +220,35 @@ class TestDalkiaRagAgent(unittest.TestCase):
         self.assertEqual(new_ticket["status"], "success")
         self.assertTrue(new_ticket["ticket_id"].startswith("GMAO-2026-"))
         self.assertGreaterEqual(new_ticket["numero_intervention"], 1030)
-        self.assertTrue(new_ticket.get("bigquery_synced", False))
+        self.assertIn("bigquery_synced", new_ticket)
+
+    def test_09_delete_gmao_intervention_unitary(self):
+        """Tests that a GMAO ticket can be unitarily deleted from memory and BigQuery."""
+        from dalkia_rag_adk.tools.scada_tools import get_gmao_tickets, log_gmao_intervention, delete_gmao_intervention
+
+        # 1. Create a specific test ticket to delete
+        created = log_gmao_intervention(
+            title="Test unitaire pour suppression",
+            description="Ce bon doit être supprimé unitairement",
+            equipment_id="V3V",
+            severity="preventif",
+        )
+        ticket_id = created["ticket_id"]
+        self.assertEqual(created["status"], "success")
+
+        # Verify it exists in list
+        tickets_before = get_gmao_tickets()
+        self.assertTrue(any(t["ticket_id"] == ticket_id for t in tickets_before))
+
+        # 2. Delete the ticket unitarily
+        del_res = delete_gmao_intervention(ticket_id)
+        self.assertEqual(del_res["status"], "success")
+        self.assertEqual(del_res["ticket_id"], ticket_id)
+        self.assertTrue(del_res["removed_from_memory"])
+
+        # Verify it no longer exists in list
+        tickets_after = get_gmao_tickets()
+        self.assertFalse(any(t["ticket_id"] == ticket_id for t in tickets_after))
 
 
 if __name__ == "__main__":

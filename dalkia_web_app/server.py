@@ -33,6 +33,7 @@ from dalkia_rag_adk.tools.scada_tools import (
     set_boiler_temperature,
     get_active_alarms,
     log_gmao_intervention,
+    delete_gmao_intervention,
     get_gmao_tickets,
 )
 
@@ -91,6 +92,17 @@ async def api_create_gmao_intervention(request: Request):
         return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
 
 
+@app.delete("/api/gmao/interventions/{ticket_id}")
+async def api_delete_gmao_intervention(ticket_id: str):
+    """Supprime unitairement un bon d'intervention de la GMAO et de BigQuery."""
+    try:
+        res = delete_gmao_intervention(ticket_id)
+        return res
+    except Exception as e:
+        logger.error("Error deleting GMAO ticket %s: %s", ticket_id, e)
+        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
+
+
 # Instructions for Gemini Live 3.8
 SYSTEM_INSTRUCTION = """Tu es Dalkia LiveAssist V2, l'assistant expert en génie climatique et exploitation thermique de Dalkia (Groupe EDF).
 Tu es en communication multimodale bidirectionnelle temps réel (voix, vidéo/partage d'écran et texte) avec un technicien d'exploitation Dalkia.
@@ -107,8 +119,9 @@ VISION & PARTAGE D'ÉCRAN :
 RÔLE ET CAPACITÉS :
 - Tu as accès à la base de connaissances documentaire technique Dalkia via l'outil 'search_dalkia_knowledge_base' (manuels chaudière B1 MAN-DK-BIO-001, échangeur ECH1 MAN-DK-ECH-002, régulation DESC REG-DK-DESC-003, vanne V3V MAN-DK-V3V-004).
 - Tu as accès aux outils SCADA pour lire la télémétrie ('get_facility_telemetry'), modifier les consignes ('set_temperature_setpoint'), et auditer les alarmes ('get_active_alarms').
-- Tu as accès à la GMAO Dalkia ('log_gmao_intervention') qui archive immédiatement les tickets dans BigQuery dans le dataset 'dalkia' (tables 'interventions_gmao' et 'bons_intervention').
+- Tu as accès à la GMAO Dalkia ('log_gmao_intervention', 'delete_gmao_intervention') qui archive immédiatement les tickets dans BigQuery dans le dataset 'dalkia' (tables 'interventions_gmao' et 'bons_intervention').
 - Lorsque le technicien te demande d'enregistrer une intervention, appelle systématiquement 'log_gmao_intervention' en précisant l'équipement (B1, ECH1, V3V...), le titre, la description et la gravité.
+- Lorsque le technicien te demande de supprimer un bon d'intervention (ex: "supprime le bon d'intervention GMAO-2026-1030" ou "supprime l'intervention numéro 1030"), appelle 'delete_gmao_intervention' avec l'identifiant du ticket.
 
 COMMANDES ET RÉGULATION EN DIRECT (DYNAMIQUES) :
 - Si le technicien te demande de modifier une consigne ou d'augmenter/baisser la température (ex: "augmente la température du circuit primaire à 950 degrés", "règle la chaudière à 920°C", "passe à 950 degrés", "baisse la consigne primaire à 82°C") :
@@ -205,6 +218,20 @@ DALKIA_TOOL_DECLARATIONS = [
                     required=["title", "description", "equipment_id"],
                 ),
             ),
+            types.FunctionDeclaration(
+                name="delete_gmao_intervention",
+                description="Supprime unitairement un bon d'intervention dans la GMAO Dalkia et dans BigQuery (dataset 'dalkia').",
+                parameters=types.Schema(
+                    type=types.Type.OBJECT,
+                    properties={
+                        "ticket_id": types.Schema(
+                            type=types.Type.STRING,
+                            description="Identifiant du ticket GMAO (ex: 'GMAO-2026-1030') ou numéro de bon (ex: '1030')",
+                        )
+                    },
+                    required=["ticket_id"],
+                ),
+            ),
         ]
     )
 ]
@@ -235,6 +262,8 @@ def execute_dalkia_tool(name: str, args: Dict[str, Any]) -> Any:
             args.get("equipment_id", "B1"),
             args.get("severity", "normal"),
         )
+    elif name == "delete_gmao_intervention":
+        return delete_gmao_intervention(args.get("ticket_id", ""))
     return {"error": f"Tool '{name}' unknown"}
 
 
@@ -308,6 +337,14 @@ async def websocket_live_endpoint(websocket: WebSocket):
                                     await websocket.send_json({
                                         "type": "gmao_updated",
                                         "ticket": result,
+                                    })
+
+                                # If GMAO intervention was deleted, notify frontend immediately
+                                if call.name == "delete_gmao_intervention" and isinstance(result, dict):
+                                    await websocket.send_json({
+                                        "type": "gmao_deleted",
+                                        "ticket_id": result.get("ticket_id"),
+                                        "result": result,
                                     })
 
                                 # Send response back to Gemini Live

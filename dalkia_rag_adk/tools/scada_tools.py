@@ -484,6 +484,69 @@ def log_gmao_intervention(
     }
 
 
+def delete_gmao_intervention(ticket_id: str) -> Dict[str, Any]:
+    """Supprime unitairement un bon d'intervention dans la GMAO locale et dans BigQuery (dataset dalkia).
+
+    Args:
+        ticket_id: Identifiant du ticket (ex: 'GMAO-2026-1030') ou numéro d'intervention (ex: 1030).
+
+    Returns:
+        Dictionnaire confirmant la suppression unitaire et le statut BigQuery.
+    """
+    clean_id = str(ticket_id).strip()
+    num_val = None
+    if clean_id.startswith("GMAO-"):
+        parts = clean_id.split("-")
+        if len(parts) >= 3 and parts[-1].isdigit():
+            num_val = int(parts[-1])
+    elif clean_id.isdigit():
+        num_val = int(clean_id)
+
+    # 1. Suppression dans le cache mémoire local
+    initial_count = len(_facility_state["gmao_tickets"])
+    _facility_state["gmao_tickets"] = [
+        t for t in _facility_state["gmao_tickets"]
+        if t.get("ticket_id") != clean_id and (num_val is None or t.get("numero_intervention") != num_val)
+    ]
+    removed_from_memory = len(_facility_state["gmao_tickets"]) < initial_count
+
+    # 2. Suppression dans BigQuery dataset 'dalkia'
+    bq_deleted = False
+    client = get_bigquery_client()
+    if client:
+        try:
+            conditions = ["ticket_id = @tid"]
+            query_params = [bigquery.ScalarQueryParameter("tid", "STRING", clean_id)]
+            if num_val is not None:
+                conditions.append("numero_intervention = @num")
+                query_params.append(bigquery.ScalarQueryParameter("num", "INT64", num_val))
+
+            where_clause = " OR ".join(conditions)
+            sql_gmao = f"DELETE FROM `{BQ_PROJECT}.{BQ_DATASET}.{BQ_TABLE_GMAO}` WHERE {where_clause}"
+            job_config = bigquery.QueryJobConfig(query_parameters=query_params)
+            client.query(sql_gmao, job_config=job_config).result()
+
+            if num_val is not None:
+                sql_bons = f"DELETE FROM `{BQ_PROJECT}.{BQ_DATASET}.{BQ_TABLE_BONS}` WHERE numero_intervention = @num"
+                client.query(sql_bons, job_config=bigquery.QueryJobConfig(
+                    query_parameters=[bigquery.ScalarQueryParameter("num", "INT64", num_val)]
+                )).result()
+
+            bq_deleted = True
+            logger.info("Successfully deleted ticket %s from BigQuery", clean_id)
+        except Exception as e:
+            logger.warning("Could not delete ticket %s from BigQuery: %s", clean_id, e)
+
+    return {
+        "status": "success",
+        "ticket_id": clean_id,
+        "numero_intervention": num_val,
+        "removed_from_memory": removed_from_memory,
+        "bigquery_deleted": bq_deleted,
+        "message": f"Bon d'intervention {clean_id} supprimé avec succès.",
+    }
+
+
 def get_active_alarms() -> List[Dict[str, Any]]:
     """Retourne la liste des alarmes actives non acquittées sur le réseau et la chaufferie."""
     return [a for a in _facility_state["alarms"] if not a.get("is_acknowledged", False)]
