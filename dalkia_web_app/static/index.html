@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dalkia LiveAssist V2 - Supervision, Screen Sharing & GMAO BigQuery</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="logo-badge">
+          <span class="logo-text">dalkia</span>
+          <span class="logo-sub">GROUPE EDF</span>
+        </div>
+        <div class="title-wrap">
+          <div class="title-row">
+            <h1>LiveAssist Réseaux de Chaleur</h1>
+            <span class="version-tag">V2 GMAO & BIGQUERY</span>
+          </div>
+          <p class="subtitle">Supervision industrielle, Screen Sharing & Traçabilité GMAO BigQuery</p>
+        </div>
+      </div>
+
+      <div class="header-status">
+        <!-- Native Screen Sharing Toggle Button -->
+        <button id="screenShareBtn" class="btn-screen-share" title="Partager l'écran avec Gemini Live 3.8">
+          <span class="material-symbols-outlined" id="screenShareIcon">screen_share</span>
+          <span id="screenShareLabel">Partager l'écran</span>
+        </button>
+
+        <div class="status-pill" id="connPill">
+          <span class="status-dot"></span>
+          <span id="connStatus">Déconnecté</span>
+        </div>
+
+        <div class="model-badge" id="modelBadge">
+          <span class="material-symbols-outlined">bolt</span>
+          <span>Gemini Live 3.8</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="app-nav-tabs">
+      <button class="nav-tab-btn active" id="tabSupervisionBtn">
+        <span class="material-symbols-outlined">dashboard</span>
+        <span>Supervision SCADA & Cockpit</span>
+      </button>
+      <button class="nav-tab-btn" id="tabGmaoBtn">
+        <span class="material-symbols-outlined">assignment</span>
+        <span>Interventions GMAO</span>
+        <span class="badge-counter" id="gmaoBadgeCount">...</span>
+      </button>
+    </nav>
+
+    <!-- Main Workspace -->
+    <main class="main-content">
+      
+      <!-- ==============================================================================
+           TAB 1: SUPERVISION SCADA & COCKPIT
+           ============================================================================== -->
+      <div id="supervisionTabContent" class="tab-pane active">
+        <!-- Active Alarms Banner -->
+        <section class="alarms-banner-wrap">
+          <div class="alarm-banner nominal" id="alarmsBanner">
+            <div class="alarm-icon-box">
+              <span class="material-symbols-outlined" id="alarmIcon">verified</span>
+            </div>
+            <div class="alarm-content">
+              <div class="alarm-title" id="alarmTitle">Régulation nominale du réseau DESC</div>
+              <div class="alarm-desc" id="alarmDesc">Aucune alarme active. Température foyer B1 sous contrôle (870°C).</div>
+            </div>
+            <div class="alarm-badge" id="alarmBadge">NOMINAL</div>
+          </div>
+        </section>
+
+        <!-- Industrial Cockpit: Chaudière B1 & Échangeur ECH1 -->
+        <section class="cockpit-grid">
+          <!-- Boiler Card (Chaudière B1) -->
+          <div class="cockpit-card boiler-card" id="boilerCard">
+            <div class="card-header">
+              <div class="card-title">
+                <span class="material-symbols-outlined text-orange">local_fire_department</span>
+                <h3>Chaudière Biomasse B1</h3>
+              </div>
+              <span class="equipment-tag">MAN-DK-BIO-001</span>
+            </div>
+
+            <div class="boiler-body">
+              <!-- Visual Animated Combustion Chamber -->
+              <div class="combustion-chamber">
+                <div class="chamber-glow" id="chamberGlow"></div>
+                <div class="flame-container" id="flameContainer">
+                  <div class="flame-particle p1"></div>
+                  <div class="flame-particle p2"></div>
+                  <div class="flame-particle p3"></div>
+                  <div class="flame-core"></div>
+                </div>
+                <div class="boiler-illustration-label">FOYER B1</div>
+              </div>
+
+              <!-- Boiler Telemetry Details -->
+              <div class="boiler-telemetry">
+                <div class="temperature-gauge-box">
+                  <span class="temp-label">TEMPÉRATURE FOYER</span>
+                  <div class="temp-value-display">
+                    <span class="temp-digits" id="boilerTempDigits">870</span>
+                    <span class="temp-unit">°C</span>
+                  </div>
+                  <div class="temp-scale-bar">
+                    <div class="temp-fill" id="tempScaleFill" style="width: 53%;"></div>
+                    <div class="temp-limit-marker" style="left: 78%;">
+                      <span>950°C SEUIL ARRÊT</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mini-metrics-row">
+                  <div class="mini-metric">
+                    <span class="m-label">Pression foyer</span>
+                    <span class="m-value" id="boilerPressure">-12 mbar</span>
+                  </div>
+                  <div class="mini-metric">
+                    <span class="m-label">Air comburant</span>
+                    <span class="m-value" id="boilerAirFlow">14 200 Nm³/h</span>
+                  </div>
+                  <div class="mini-metric">
+                    <span class="m-label">Régulation</span>
+                    <span class="m-value text-emerald" id="boilerRegStatus">AUTO NOMINAL</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Simulation Controls for Demos -->
+            <div class="boiler-sim-controls">
+              <span class="sim-label">Simulation Démonstration :</span>
+              <div class="sim-buttons">
+                <button class="btn-sim nominal active" id="btnSimNominal">
+                  <span class="material-symbols-outlined">check_circle</span>
+                  <span>870°C Nominal</span>
+                </button>
+                <button class="btn-sim warning" id="btnSimWarning">
+                  <span class="material-symbols-outlined">warning</span>
+                  <span>920°C Alerte</span>
+                </button>
+                <button class="btn-sim danger" id="btnSimDanger">
+                  <span class="material-symbols-outlined">error</span>
+                  <span>965°C Surchauffe Critique</span>
+                </button>
+              </div>
+              <div class="slider-wrap">
+                <span>750°C</span>
+                <input type="range" id="tempSlider" min="750" max="1020" value="870" step="5">
+                <span>1020°C (<strong id="sliderValueText">870°C</strong>)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Secondary Network & Exchanger ECH1 -->
+          <div class="cockpit-card network-card" id="exchangerCard">
+            <div class="card-header">
+              <div class="card-title">
+                <span class="material-symbols-outlined text-blue">device_thermostat</span>
+                <h3>Échangeur ECH1 & Réseau DESC</h3>
+              </div>
+              <span class="equipment-tag">MAN-DK-ECH-002</span>
+            </div>
+
+            <div class="network-body">
+              <div class="scada-telemetry-grid">
+                <div class="scada-cell">
+                  <span class="scada-label">Départ Primaire (Chaudière)</span>
+                  <span class="scada-val" id="telemetryPrimarySupply">84.6 °C</span>
+                  <span class="scada-sub" id="telemetryPrimarySetpoint">Consigne : 85.0 °C</span>
+                </div>
+                <div class="scada-cell">
+                  <span class="scada-label">Retour Primaire</span>
+                  <span class="scada-val" id="telemetryPrimaryReturn">66.8 °C</span>
+                  <span class="scada-sub" id="telemetryPrimaryFlow">Débit : 495 m³/h</span>
+                </div>
+                <div class="scada-cell">
+                  <span class="scada-label">Départ Réseau DESC</span>
+                  <span class="scada-val highlight" id="telemetrySecondarySupply">77.2 °C</span>
+                  <span class="scada-sub" id="telemetrySecondarySetpoint">Consigne : 78.0 °C</span>
+                </div>
+                <div class="scada-cell">
+                  <span class="scada-label">Retour Réseau DESC</span>
+                  <span class="scada-val" id="telemetrySecondaryReturn">54.1 °C</span>
+                  <span class="scada-sub" id="telemetrySecondaryPressure">Pression : 3.9 bar</span>
+                </div>
+              </div>
+
+              <!-- Native Screen Sharing Indicator Card -->
+              <div class="screen-share-status-card" id="screenShareCard">
+                <div class="screen-share-info">
+                  <span class="material-symbols-outlined" id="screenStatusIcon">visibility_off</span>
+                  <div>
+                    <div class="screen-status-title" id="screenStatusTitle">Vision Gemini Live inactive</div>
+                    <div class="screen-status-desc" id="screenStatusDesc">Cliquez sur « Partager l'écran » pour que Gemini voit la chaudière et les alarmes en direct.</div>
+                  </div>
+                </div>
+                <div class="live-recording-badge hidden" id="screenLiveBadge">
+                  <span class="rec-dot"></span>
+                  <span>EN DIRECT</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Voice & Visualizer Section -->
+        <section class="voice-hero">
+          <div class="visualizer-container">
+            <canvas id="visualizerCanvas" width="600" height="80"></canvas>
+          </div>
+
+          <div class="mic-action-area">
+            <div class="pulse-ring" id="pulseRing"></div>
+            <button id="micBtn" class="mic-button" title="Activer / Désactiver la voix">
+              <span class="material-symbols-outlined" id="micIcon">mic</span>
+            </button>
+          </div>
+
+          <div class="live-state-label" id="stateLabel">Cliquez sur le micro pour échanger en direct</div>
+
+          <!-- Quick Test Prompts -->
+          <div class="test-prompts-section">
+            <span class="prompts-label">Scénarios rapides de test :</span>
+            <div class="prompt-chips">
+              <button class="chip vision-chip" data-prompt="Augmente la température du circuit primaire à 950 degrés">
+                <span class="material-symbols-outlined">local_fire_department</span>
+                <span>🔥 Augmenter à 950°C (Surchauffe)</span>
+              </button>
+              <button class="chip vision-chip" data-prompt="Règle la température foyer de la chaudière à 920°C">
+                <span class="material-symbols-outlined">thermostat</span>
+                <span>⚠️ Régler à 920°C (Alerte)</span>
+              </button>
+              <button class="chip vision-chip" data-prompt="Remets la chaudière biomasse B1 en régime nominal à 870°C">
+                <span class="material-symbols-outlined">check_circle</span>
+                <span>✅ Retour à 870°C (Nominal)</span>
+              </button>
+              <button class="chip vision-chip" data-prompt="Quelle est la procédure d'urgence si la chaudière biomasse B1 dépasse 950°C ?">
+                <span class="material-symbols-outlined">videocam</span>
+                <span>Chaudière B1 & Procédure > 950°C</span>
+              </button>
+              <button class="chip vision-chip" data-prompt="Que vois-tu à l'écran concernant la chaudière et les alarmes en cours ?">
+                <span class="material-symbols-outlined">visibility</span>
+                <span>Que vois-tu à l'écran ?</span>
+              </button>
+              <button class="chip" data-prompt="Enregistre une intervention GMAO préventive sur l'échangeur ECH1 suite à un détartrage chimique des plaques.">
+                <span class="material-symbols-outlined">assignment</span>
+                <span>GMAO : Détartrage ECH1</span>
+              </button>
+              <button class="chip" data-prompt="Ouvre un ticket GMAO d'urgence sur la chaudière B1 pour surchauffe critique du foyer.">
+                <span class="material-symbols-outlined">assignment_late</span>
+                <span>GMAO : Surchauffe B1</span>
+              </button>
+              <button class="chip" data-prompt="Donne-moi l'état de la télémétrie actuelle de la chaufferie.">
+                <span class="material-symbols-outlined">sensors</span>
+                <span>Télémétrie Chaufferie</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Activity & Transcript Feed -->
+        <section class="feed-section">
+          <div class="feed-header">
+            <h2>
+              <span class="material-symbols-outlined">forum</span>
+              <span>Activité en direct (Voix, RAG & SCADA)</span>
+            </h2>
+            <button id="clearBtn" class="btn-text">
+              <span class="material-symbols-outlined">delete_sweep</span>
+              Effacer
+            </button>
+          </div>
+
+          <div class="feed-container" id="feedContainer">
+            <div class="empty-state" id="emptyState">
+              <span class="material-symbols-outlined">record_voice_over</span>
+              <p>La conversation vocale, les analyses visuelles et les recherches documentaires RAG apparaîtront ici en direct.</p>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ==============================================================================
+           TAB 2: GMAO & INTERVENTIONS (BIGQUERY TRACEABILITY)
+           ============================================================================== -->
+      <div id="gmaoTabContent" class="tab-pane">
+        <!-- BigQuery Real-Time Sync Banner -->
+        <section class="bq-banner-card">
+          <div class="bq-banner-left">
+            <div class="bq-icon-box">
+              <span class="material-symbols-outlined">database</span>
+            </div>
+            <div class="bq-info">
+              <div class="bq-title-row">
+                <h3>Google Cloud BigQuery : Traçabilité active</h3>
+                <span class="bq-live-pill">
+                  <span class="bq-dot"></span>
+                  SYNCHRONISÉ EN DIRECT
+                </span>
+              </div>
+              <p class="bq-desc">
+                Toutes les interventions créées à la voix par Gemini Live ou manuellement sont archivées dans le dataset 
+                <strong><code>dalkia</code></strong> (tables <code>interventions_gmao</code> et historique <code>bons_intervention</code> - région EU).
+              </p>
+            </div>
+          </div>
+          <button class="btn-refresh-gmao" id="btnRefreshGmao" title="Recharger depuis BigQuery">
+            <span class="material-symbols-outlined">refresh</span>
+            <span>Actualiser</span>
+          </button>
+        </section>
+
+        <!-- GMAO KPIs Summary Row -->
+        <section class="gmao-kpi-grid">
+          <div class="gmao-kpi-card">
+            <div class="kpi-icon-wrap bg-blue-subtle text-blue">
+              <span class="material-symbols-outlined">assignment</span>
+            </div>
+            <div class="kpi-data">
+              <span class="kpi-number" id="kpiTotalTickets">0</span>
+              <span class="kpi-label">Total Interventions</span>
+            </div>
+          </div>
+
+          <div class="gmao-kpi-card">
+            <div class="kpi-icon-wrap bg-red-subtle text-danger">
+              <span class="material-symbols-outlined">warning</span>
+            </div>
+            <div class="kpi-data">
+              <span class="kpi-number" id="kpiCriticalTickets">0</span>
+              <span class="kpi-label">Interventions Critiques</span>
+            </div>
+          </div>
+
+          <div class="gmao-kpi-card">
+            <div class="kpi-icon-wrap bg-emerald-subtle text-emerald">
+              <span class="material-symbols-outlined">build_circle</span>
+            </div>
+            <div class="kpi-data">
+              <span class="kpi-number" id="kpiPreventiveTickets">0</span>
+              <span class="kpi-label">Interventions Préventives</span>
+            </div>
+          </div>
+
+          <div class="gmao-kpi-card">
+            <div class="kpi-icon-wrap bg-orange-subtle text-orange">
+              <span class="material-symbols-outlined">precision_manufacturing</span>
+            </div>
+            <div class="kpi-data">
+              <span class="kpi-number" id="kpiEquipmentsCount">B1, ECH1, V3V</span>
+              <span class="kpi-label">Équipements Traités</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Filters & Action Bar -->
+        <section class="gmao-toolbar">
+          <div class="gmao-search-box">
+            <span class="material-symbols-outlined">search</span>
+            <input type="text" id="gmaoSearchInput" placeholder="Rechercher par titre, équipement, rapport...">
+          </div>
+
+          <div class="gmao-filters-group">
+            <div class="filter-select-wrap">
+              <label>Équipement :</label>
+              <select id="gmaoFilterEquip">
+                <option value="ALL">Tous les équipements</option>
+                <option value="B1">Chaudière B1</option>
+                <option value="ECH1">Échangeur ECH1</option>
+                <option value="V3V">Vanne V3V</option>
+                <option value="G2">Chaudière Gaz G2</option>
+                <option value="P1">Circulateur P1</option>
+              </select>
+            </div>
+
+            <div class="filter-select-wrap">
+              <label>Gravité :</label>
+              <select id="gmaoFilterSeverity">
+                <option value="ALL">Toutes les gravités</option>
+                <option value="critique">Critique</option>
+                <option value="normal">Normale</option>
+                <option value="preventif">Préventive</option>
+              </select>
+            </div>
+
+            <button class="btn-create-ticket" id="btnOpenModal">
+              <span class="material-symbols-outlined">add_task</span>
+              <span>Nouveau bon</span>
+            </button>
+          </div>
+        </section>
+
+        <!-- GMAO Tickets List Grid -->
+        <section class="gmao-tickets-section">
+          <div class="gmao-tickets-grid" id="gmaoTicketsGrid">
+            <!-- Dynamic Ticket Cards injected by app.js -->
+            <div class="loading-state">
+              <span class="material-symbols-outlined spinning">sync</span>
+              <p>Chargement des interventions depuis BigQuery...</p>
+            </div>
+          </div>
+        </section>
+      </div>
+
+    </main>
+
+    <!-- Modal for Manual Ticket Creation -->
+    <div class="modal-backdrop hidden" id="ticketModal">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div class="modal-title">
+            <span class="material-symbols-outlined text-orange">add_task</span>
+            <h3>Créer un Bon d'Intervention GMAO</h3>
+          </div>
+          <button class="btn-close-modal" id="btnCloseModal">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+
+        <form id="manualTicketForm" class="modal-form">
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label>Équipement concerné *</label>
+              <select id="formEquipment" required>
+                <option value="B1">Chaudière Biomasse B1</option>
+                <option value="ECH1">Échangeur à plaques ECH1</option>
+                <option value="V3V">Vanne de mélange V3V</option>
+                <option value="G2">Chaudière Gaz d'Appoint G2</option>
+                <option value="P1">Circulateur Primaire P1</option>
+                <option value="P2">Circulateur Réseau P2</option>
+              </select>
+            </div>
+
+            <div class="form-group flex-1">
+              <label>Gravité / Nature *</label>
+              <select id="formSeverity" required>
+                <option value="normal">Normal</option>
+                <option value="preventif">Préventif</option>
+                <option value="critique">Critique / Urgence</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Titre de l'intervention *</label>
+            <input type="text" id="formTitle" placeholder="Ex: Contrôle de pincement thermique et serrage des tirants" required>
+          </div>
+
+          <div class="form-group">
+            <label>Compte-rendu technique détaillé *</label>
+            <textarea id="formDescription" rows="4" placeholder="Constat métrologique, pièces remplacées, vérifications de conformité et consignes de sécurité..." required></textarea>
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" class="btn-cancel" id="btnCancelModal">Annuler</button>
+            <button type="submit" class="btn-submit">
+              <span class="material-symbols-outlined">cloud_upload</span>
+              <span>Enregistrer dans BigQuery</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Footer Input Bar (Available everywhere) -->
+    <footer class="app-footer">
+      <form id="textForm" class="text-input-form">
+        <input 
+          type="text" 
+          id="textInput" 
+          placeholder="Posez une question technique, commentez ce que vous voyez, ou dictez une intervention GMAO..." 
+          autocomplete="off"
+        >
+        <button type="submit" class="btn-send" title="Envoyer">
+          <span class="material-symbols-outlined">arrow_upward</span>
+        </button>
+      </form>
+    </footer>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

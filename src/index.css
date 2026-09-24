@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-[#07111e] text-slate-100;
+  }
+}
+
+/* Custom animations & scrollbars */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.2s ease-out forwards;
+}
+
+/* Custom thin scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #07111e;
+}
+::-webkit-scrollbar-thumb {
+  background: #1b3456;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #0072CE;
+}
