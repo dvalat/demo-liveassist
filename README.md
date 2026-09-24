@@ -7,9 +7,10 @@
 ## 📋 Présentation
 
 **Dalkia LiveAssist** permet aux techniciens et exploitants de piloter et superviser les installations thermiques Dalkia les mains libres grâce à la voix :
-1. **Échanges oraux naturels et bidirectionnels** à très faible latence avec Gemini Live 3.8 (`gemini-3.8-live`, micro PCM 16 kHz mono, synthèse vocale native PCM 24 kHz).
-2. **RAG Grounding automatique** sur les manuels techniques et procédures d'urgence Dalkia (chaudière biomasse B1, échangeur à plaques ECH1, loi d'eau DESC, vannes 3 voies V3V).
-3. **Supervision SCADA & GMAO** en temps réel : consultation de télémétrie, modification de consignes thermiques, acquittement d'alarmes et création de rapports de maintenance.
+1. **Échanges oraux naturels et bidirectionnels** à très faible latence avec Gemini Live 3.8 (`gemini-3.8-live`, micro PCM 16 kHz mono, synthèse vocale native PCM 24 kHz) et partage d'écran vidéo en direct.
+2. **Couplage thermodynamique dynamique SCADA** : régulation réactive de la chaudière biomasse B1, de l'échangeur à plaques ECH1 (départ/retour primaire, débit, delta T) et du réseau DESC (départ/retour secondaire, pression).
+3. **RAG Grounding automatique** sur les manuels techniques et procédures d'urgence Dalkia (chaudière biomasse B1, échangeur ECH1, loi d'eau DESC, vannes 3 voies V3V).
+4. **Gestion GMAO & traçabilité BigQuery (dataset `dalkia`)** : consultation des bons d'intervention, création vocale ou manuelle, suppression unitaire (UI corbeille, API REST `DELETE`, requêtes DML BigQuery et commande vocale).
 
 ---
 
